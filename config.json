@@ -1,0 +1,12 @@
+{
+  "_notes": {
+    "fanout_min_destinations": "flag a source IP that contacts at least this many DIFFERENT destination IPs",
+    "upload_min_src_bytes": "flag a source IP that sends at least this many bytes in total (SrcBytes column)",
+    "time_format": "how StartTime is written; CTU-13 uses 2011/08/16 10:01:46.972101",
+    "plot_top_n": "how many IPs to show in top_fanout.png"
+  },
+  "fanout_min_destinations": 50,
+  "upload_min_src_bytes": 10000000,
+  "time_format": "%Y/%m/%d %H:%M:%S.%f",
+  "plot_top_n": 15
+}

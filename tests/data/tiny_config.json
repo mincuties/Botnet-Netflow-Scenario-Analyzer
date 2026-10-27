@@ -1,0 +1,6 @@
+{
+  "fanout_min_destinations": 3,
+  "upload_min_src_bytes": 2000,
+  "time_format": "%Y/%m/%d %H:%M:%S.%f",
+  "plot_top_n": 5
+}

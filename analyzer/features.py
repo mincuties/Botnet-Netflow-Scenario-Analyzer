@@ -1,0 +1,83 @@
+"""Group flows by source IP and compute numbers ("features") for each IP.
+
+Main data structure: a dictionary keyed by source IP, for example
+    stats["147.32.84.165"] = {"n_flows": 4, "n_dst_ips": 3, ...}
+A dict allows finding one IP's numbers instantly, without scanning a list.
+"""
+
+import numpy as np
+
+
+def group_by_source(flows):
+    """Return {src_ip: [flow, flow, ...]} built with one pass over the flows."""
+    flows_by_ip = {}
+    for flow in flows:
+        if flow.src_ip not in flows_by_ip:
+            flows_by_ip[flow.src_ip] = []
+        flows_by_ip[flow.src_ip].append(flow)
+    return flows_by_ip
+
+
+def sum_or_none(values):
+    """Sum a list of numbers, but return None if the column was missing.
+
+    The loader sets src_bytes / total_bytes to None only when the file has
+    no such column, so either all values are None or none of them are.
+    """
+    if len(values) == 0 or values[0] is None:
+        return None
+    return sum(values)
+
+
+def gap_statistics(times):
+    """Mean and standard deviation (in seconds) of the gaps between flows.
+
+    Needs at least 2 flows with a known time; otherwise returns (None, None)
+    instead of crashing or dividing by zero.
+    """
+    known = sorted(t for t in times if t is not None)
+    if len(known) < 2:
+        return None, None
+    # Seconds since the first flow of this IP.
+    seconds = np.array([(t - known[0]).total_seconds() for t in known])
+    gaps = np.diff(seconds)            # time between flow i and flow i+1
+    return float(np.mean(gaps)), float(np.std(gaps))
+
+
+def compute_ip_stats(flows):
+    """Return {src_ip: dict of numbers} for every source IP."""
+    stats = {}
+    for ip, ip_flows in group_by_source(flows).items():
+        # A set keeps only DIFFERENT values, so len(set) = "how many distinct".
+        dst_ips = {f.dst_ip for f in ip_flows}
+        dst_ports = {f.dst_port for f in ip_flows if f.dst_port is not None}
+        mean_gap, std_gap = gap_statistics([f.start_time for f in ip_flows])
+        stats[ip] = {
+            "n_flows": len(ip_flows),
+            "n_dst_ips": len(dst_ips),
+            "n_dst_ports": len(dst_ports),
+            "src_bytes": sum_or_none([f.src_bytes for f in ip_flows]),
+            "total_bytes": sum_or_none([f.total_bytes for f in ip_flows]),
+            "mean_gap_s": mean_gap,
+            "std_gap_s": std_gap,
+            "is_bot": any(f.is_from_botnet() for f in ip_flows),
+            "is_normal": any(f.is_from_normal() for f in ip_flows),
+        }
+    return stats
+
+
+def describe(values):
+    """Simple NumPy statistics of a list of numbers, for the summary.
+
+    Returns None for an empty list (no data -> nothing to describe).
+    """
+    if len(values) == 0:
+        return None
+    array = np.array(values, dtype=float)
+    return {
+        "count": int(array.size),
+        "mean": float(np.mean(array)),
+        "median": float(np.median(array)),
+        "p95": float(np.percentile(array, 95)),
+        "max": float(np.max(array)),
+    }

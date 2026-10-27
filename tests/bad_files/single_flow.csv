@@ -1,0 +1,2 @@
+StartTime,Dur,Proto,SrcAddr,Sport,Dir,DstAddr,Dport,State,sTos,dTos,TotPkts,TotBytes,SrcBytes,Label
+2011/08/16 10:00:00.000000,0.5,tcp,10.0.0.1,1025,   ->,10.0.0.100,80,SRPA_SPA,0,0,4,100,60,flow=Background

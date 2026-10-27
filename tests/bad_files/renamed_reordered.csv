@@ -1,0 +1,3 @@
+Label, dst_ip ,SRCADDR,Src_Bytes,TotBytes
+flow=From-Botnet-V1,10.0.0.100,10.0.0.1,60,100
+flow=From-Botnet-V1,10.0.0.101,10.0.0.1,120,200
