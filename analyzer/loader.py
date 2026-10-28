@@ -6,6 +6,7 @@ file missing, file empty, or a required column missing.
 """
 
 import csv
+import gzip
 from collections import Counter
 from dataclasses import dataclass, field
 
@@ -16,7 +17,7 @@ REQUIRED_COLUMNS = ["SrcAddr", "DstAddr"]
 
 # Optional columns: if one is missing, the analysis still runs and the
 # summary reports the missing column.
-OPTIONAL_COLUMNS = ["StartTime", "Proto", "Dport", "SrcBytes", "TotBytes", "Label"]
+OPTIONAL_COLUMNS = ["StartTime", "Proto", "Dport", "SrcBytes", "TotBytes", "State", "Label"]
 
 # Accepted spellings for each column. Keys are written in the
 # "simplified" form produced by simplify_name() below.
@@ -29,6 +30,7 @@ COLUMN_ALIASES = {
     "srcbytes": "SrcBytes", "sbytes": "SrcBytes",
     "totbytes": "TotBytes", "totalbytes": "TotBytes", "bytes": "TotBytes",
     "label": "Label",
+    "state": "State", "tcpflags": "State",
 }
 
 
@@ -118,6 +120,7 @@ def row_to_flow(row, positions, time_format):
         src_bytes=src_bytes,
         total_bytes=total_bytes,
         label=get("Label"),
+        state=get("State"),
     )
 
 
@@ -129,13 +132,22 @@ def short_reason(error):
     return str(error).split(":")[0]
 
 
+def open_text(path):
+    """Open a plain or gzip-compressed (.gz) text file for reading.
+
+    utf-8-sig removes the invisible BOM character that Excel adds.
+    newline="" is what the csv module documentation asks for.
+    """
+    if str(path).endswith(".gz"):
+        return gzip.open(path, "rt", encoding="utf-8-sig", newline="")
+    return open(path, encoding="utf-8-sig", newline="")
+
+
 def load_flows(path, time_format="%Y/%m/%d %H:%M:%S.%f"):
     """Read the file at `path` and return a LoadResult."""
     result = LoadResult()
     try:
-        # utf-8-sig removes the invisible BOM character that Excel adds.
-        # newline="" is what the csv module documentation asks for.
-        with open(path, encoding="utf-8-sig", newline="") as file:
+        with open_text(path) as file:
             header_line = file.readline()
             if header_line.strip() == "":
                 raise LoaderError(f"file is empty (no header line): {path}")

@@ -51,7 +51,10 @@ def compute_ip_stats(flows):
         # A set keeps only DIFFERENT values, so len(set) = "how many distinct".
         dst_ips = {f.dst_ip for f in ip_flows}
         dst_ports = {f.dst_port for f in ip_flows if f.dst_port is not None}
-        mean_gap, std_gap = gap_statistics([f.start_time for f in ip_flows])
+        times = [f.start_time for f in ip_flows if f.start_time is not None]
+        mean_gap, std_gap = gap_statistics(times)
+        tcp_attempts = sum(1 for f in ip_flows if f.is_tcp_attempt())
+        tcp_failed = sum(1 for f in ip_flows if f.is_failed_tcp())
         stats[ip] = {
             "n_flows": len(ip_flows),
             "n_dst_ips": len(dst_ips),
@@ -60,10 +63,45 @@ def compute_ip_stats(flows):
             "total_bytes": sum_or_none([f.total_bytes for f in ip_flows]),
             "mean_gap_s": mean_gap,
             "std_gap_s": std_gap,
+            "tcp_attempts": tcp_attempts,
+            "tcp_failed": tcp_failed,
+            "first_seen": min(times) if times else None,
+            "last_seen": max(times) if times else None,
             "is_bot": any(f.is_from_botnet() for f in ip_flows),
             "is_normal": any(f.is_from_normal() for f in ip_flows),
         }
     return stats
+
+
+def pair_regularity(flows, min_flows):
+    """Most regular source -> destination conversation of each source IP.
+
+    Malware often "phones home" to its command server at a fixed interval
+    (beaconing). For every (source, destination) pair with at least
+    `min_flows` flows, the coefficient of variation of the gaps is
+
+        CV = standard deviation of gaps / mean gap
+
+    CV = 0 means perfectly regular (10 s, 10 s, 10 s); people browsing give
+    CV around 1 or more. Returns {src_ip: (lowest CV, destination, flows)}
+    for IPs that have at least one qualifying pair.
+    """
+    times_by_pair = {}
+    for flow in flows:
+        if flow.start_time is not None:
+            times_by_pair.setdefault((flow.src_ip, flow.dst_ip), []).append(flow.start_time)
+
+    best = {}
+    for (src, dst), times in times_by_pair.items():
+        if len(times) < min_flows:
+            continue
+        mean_gap, std_gap = gap_statistics(times)
+        if mean_gap is None or mean_gap <= 0:
+            continue  # all flows at the same instant: no rhythm to measure
+        cv = std_gap / mean_gap
+        if src not in best or cv < best[src][0]:
+            best[src] = (cv, dst, len(times))
+    return best
 
 
 def describe(values):

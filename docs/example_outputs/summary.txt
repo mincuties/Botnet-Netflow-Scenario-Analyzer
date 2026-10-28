@@ -4,52 +4,45 @@ Input file: data/sample.csv
 Data rows read: 60000
 Valid flows used: 60000
 Rows skipped: 0
-Columns ignored (not used): Dur, Sport, Dir, State, sTos, dTos, TotPkts
+Columns ignored (not used): Dur, Sport, Dir, sTos, dTos, TotPkts
 
 Distinct source IPs: 13554
+Monitored source IPs (prefix '147.32.'): 272
+Source IP x 300 s windows: 14096
 Per source IP statistics (NumPy):
   n_flows: count=13554 mean=4.4 median=1.0 p95=2.0 max=9753
   n_dst_ips: count=13554 mean=1.9 median=1.0 p95=1.0 max=5124
   src_bytes: count=13554 mean=63472.0 median=155.0 p95=4482.5 max=563502319
 
-Rules (thresholds from config):
-  fanout:       n_dst_ips >= 50
-  large_upload: src_bytes >= 10000000
-Flagged source IPs: 27 (details in report.csv)
-  147.32.84.229: n_dst_ips=5124 >= 50
-  147.32.84.59: n_dst_ips=2861 >= 50; src_bytes=563502319 >= 10000000
-  147.32.84.94: n_dst_ips=1719 >= 50; src_bytes=22923002 >= 10000000
-  147.32.86.223: n_dst_ips=159 >= 50
-  147.32.86.165: n_dst_ips=139 >= 50
-  147.32.87.220: n_dst_ips=135 >= 50
-  147.32.84.111: n_dst_ips=123 >= 50
-  147.32.85.26: n_dst_ips=109 >= 50
-  147.32.85.7: n_dst_ips=84 >= 50
-  147.32.84.184: n_dst_ips=84 >= 50
-  147.32.86.134: n_dst_ips=80 >= 50
-  147.32.86.171: n_dst_ips=79 >= 50
-  147.32.85.120: n_dst_ips=66 >= 50
-  147.32.84.118: n_dst_ips=65 >= 50
-  147.32.87.248: n_dst_ips=62 >= 50
-  147.32.86.183: n_dst_ips=57 >= 50
-  147.32.84.194: n_dst_ips=56 >= 50
-  147.32.87.238: n_dst_ips=56 >= 50
-  147.32.86.58: n_dst_ips=50 >= 50
-  147.32.80.13: src_bytes=49942835 >= 10000000
-  147.32.85.109: src_bytes=10378112 >= 10000000
-  195.250.146.107: src_bytes=27108740 >= 10000000
-  109.80.225.83: src_bytes=40750176 >= 10000000
-  88.176.79.163: src_bytes=28023366 >= 10000000
-  74.63.47.82: src_bytes=21279353 >= 10000000
-  95.168.207.36: src_bytes=10516370 >= 10000000
-  85.160.19.97: src_bytes=10066414 >= 10000000
+Signals (points, group): rule
+  fanout       (+2, spread): distinct destination IPs >= 50
+  large_upload (+2, volume): bytes sent >= 10000000
+  failed_tcp   (+2, spread): failed share >= 0.5 after >= 20 attempts
+  port_scan    (+2, spread): distinct ports in one window >= 20
+  burst        (+2, volume): flows in one window >= 503 (percentile 99.9, minimum 100)
+  beaconing    (+1, control): gap CV <= 0.1 over >= 10 flows to one destination
+  blocklist    (+3, control): any flow to 10 blocklisted IPs
+  ml: not used (run with --ml to enable)
+  group caps: control 3, ml 2, spread 2, volume 2
+  severity: low >= 1, medium >= 3, high >= 5 (medium and high are reported)
+IPs by severity: high 1, medium 8, low 33 (low is not reported)
+Flagged source IPs: 9 (details in report.csv; high severity also in recommended_blocks.csv)
+  147.32.84.59 [high, score 5]: fanout: distinct destination IPs=2861 >= 50; large_upload: bytes sent=563502319 >= 10000000; port_scan: distinct destination ports in one window=1337 >= 20; burst: flows in one window=5551 >= 503; beaconing: lowest gap CV to one destination=0.00 <= 0.10
+  147.32.84.229 [medium, score 4]: fanout: distinct destination IPs=5124 >= 50; port_scan: distinct destination ports in one window=2624 >= 20; burst: flows in one window=2812 >= 503
+  147.32.84.94 [medium, score 4]: fanout: distinct destination IPs=1719 >= 50; large_upload: bytes sent=22923002 >= 10000000; port_scan: distinct destination ports in one window=572 >= 20; burst: flows in one window=1709 >= 503
+  147.32.86.223 [medium, score 4]: fanout: distinct destination IPs=159 >= 50; port_scan: distinct destination ports in one window=142 >= 20; burst: flows in one window=539 >= 503
+  147.32.85.7 [medium, score 4]: fanout: distinct destination IPs=84 >= 50; burst: flows in one window=707 >= 503
+  147.32.86.134 [medium, score 4]: fanout: distinct destination IPs=80 >= 50; burst: flows in one window=827 >= 503
+  147.32.80.13 [medium, score 4]: large_upload: bytes sent=49942835 >= 10000000; port_scan: distinct destination ports in one window=26 >= 20
+  147.32.86.77 [medium, score 3]: port_scan: distinct destination ports in one window=26 >= 20; beaconing: lowest gap CV to one destination=0.01 <= 0.10
+  147.32.84.166 [medium, score 3]: blocklist: flows to blocklisted IPs=1 >= 1
 
-Comparison with dataset labels (an IP is a bot if it has a From-Botnet flow):
+Comparison with dataset labels (monitored IPs; an IP is a bot if it has a From-Botnet flow):
   Bot IPs in file: 1, labelled-normal IPs: 5
   Bots flagged: 0 of 1
   Bots missed: 1 ['147.32.84.165']
   Labelled-normal IPs flagged (false alarms): 0
-  Background IPs flagged (label unknown, not verified): 27
+  Background IPs flagged (label unknown, not verified): 9
 
 Note: a flag means 'unusual behaviour worth checking', not proof of infection.
-Results are valid only for this file and these thresholds.
+Results are valid only for this file and these settings.

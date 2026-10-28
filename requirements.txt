@@ -1,4 +1,6 @@
-# Tested with Python 3.13, numpy 2.5.3, matplotlib 3.11.2, pytest 9.1.1
+# Tested with Python 3.13, numpy 2.5.3, matplotlib 3.11.2, pytest 9.1.1, scikit-learn 1.9.1
+# scikit-learn is used only by the optional decision tree layer (--ml, train_model.py).
 numpy>=1.24
 matplotlib>=3.7
 pytest>=7.0
+scikit-learn>=1.3

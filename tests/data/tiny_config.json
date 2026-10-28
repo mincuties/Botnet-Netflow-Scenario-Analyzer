@@ -1,6 +1,19 @@
 {
-  "fanout_min_destinations": 3,
-  "upload_min_src_bytes": 2000,
   "time_format": "%Y/%m/%d %H:%M:%S.%f",
-  "plot_top_n": 5
+  "window_seconds": 300,
+  "monitored_prefix": "10.0.0.",
+  "blocklist_file": "tiny_blocklist.txt",
+  "plot_top_n": 5,
+  "signals": {
+    "fanout":       {"threshold": 3, "points": 2, "group": "spread"},
+    "port_scan":    {"threshold": 3, "points": 2, "group": "spread"},
+    "failed_tcp":   {"threshold": 0.5, "min_attempts": 3, "points": 2, "group": "spread"},
+    "large_upload": {"threshold": 2000, "points": 2, "group": "volume"},
+    "burst":        {"percentile": 100, "min_flows": 4, "points": 2, "group": "volume"},
+    "beaconing":    {"max_cv": 0.1, "min_flows": 3, "points": 1, "group": "control"},
+    "blocklist":    {"points": 3, "group": "control"}
+  },
+  "group_caps": {"spread": 2, "volume": 2, "control": 3, "ml": 2},
+  "severity": {"low": 1, "medium": 2, "high": 5},
+  "ml": {"enabled": false, "model_file": "../../models/decision_tree.pkl", "min_probability": 0.5, "points": 2}
 }

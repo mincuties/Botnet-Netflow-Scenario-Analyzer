@@ -6,7 +6,7 @@ Usage:
 The sample is the header line plus a block of consecutive rows, copied
 EXACTLY as they are in the original (no change, no cleaning), so anyone
 can re-create it from the original file. SHA-256 checksums of both files
-are printed so they can be written into data/DATA.md.
+are printed so they can be written into README.md.
 """
 
 import argparse

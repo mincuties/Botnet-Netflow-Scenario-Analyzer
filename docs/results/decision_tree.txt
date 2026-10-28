@@ -1,0 +1,46 @@
+Trained on: data/scenarios/scenario05.binetflow.gz, data/scenarios/scenario10.binetflow.gz
+Windows: 293988 (bot windows: 203)
+
+|--- log10_src_bytes <= 3.66
+|   |--- n_dst_ips <= 1.50
+|   |   |--- n_dst_ports <= 0.50
+|   |   |   |--- log10_bytes_per_flow <= 1.81
+|   |   |   |   |--- class: 1
+|   |   |   |--- log10_bytes_per_flow >  1.81
+|   |   |   |   |--- class: 0
+|   |   |--- n_dst_ports >  0.50
+|   |   |   |--- log10_bytes_per_flow <= 2.65
+|   |   |   |   |--- class: 0
+|   |   |   |--- log10_bytes_per_flow >  2.65
+|   |   |   |   |--- class: 0
+|   |--- n_dst_ips >  1.50
+|   |   |--- log10_bytes_per_flow <= 2.32
+|   |   |   |--- class: 0
+|   |   |--- log10_bytes_per_flow >  2.32
+|   |   |   |--- log10_bytes_per_flow <= 2.42
+|   |   |   |   |--- class: 1
+|   |   |   |--- log10_bytes_per_flow >  2.42
+|   |   |   |   |--- class: 0
+|--- log10_src_bytes >  3.66
+|   |--- log10_src_bytes <= 5.62
+|   |   |--- n_flows <= 1.50
+|   |   |   |--- log10_src_bytes <= 3.75
+|   |   |   |   |--- class: 1
+|   |   |   |--- log10_src_bytes >  3.75
+|   |   |   |   |--- class: 0
+|   |   |--- n_flows >  1.50
+|   |   |   |--- n_dst_ports <= 8.50
+|   |   |   |   |--- class: 1
+|   |   |   |--- n_dst_ports >  8.50
+|   |   |   |   |--- class: 0
+|   |--- log10_src_bytes >  5.62
+|   |   |--- n_dst_ips <= 63.50
+|   |   |   |--- n_dst_ips <= 5.50
+|   |   |   |   |--- class: 1
+|   |   |   |--- n_dst_ips >  5.50
+|   |   |   |   |--- class: 1
+|   |   |--- n_dst_ips >  63.50
+|   |   |   |--- log10_src_bytes <= 5.71
+|   |   |   |   |--- class: 0
+|   |   |   |--- log10_src_bytes >  5.71
+|   |   |   |   |--- class: 0

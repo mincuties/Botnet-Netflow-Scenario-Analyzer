@@ -90,3 +90,36 @@ def plot_src_bytes_distribution(path, ip_stats, threshold):
     fig.tight_layout()
     fig.savefig(path, dpi=120)
     plt.close(fig)
+
+
+SEVERITY_COLORS = {"low": "#9aa3ad", "medium": "#e0a030", "high": "#c8443a"}
+
+
+def plot_score_distribution(path, detections):
+    """Bar chart: how many IPs received each score, coloured by severity."""
+    title = "Detection score per source IP (IPs with at least one signal)"
+    if len(detections) == 0:
+        empty_chart(path, title)
+        return
+    scores = sorted({d.score for d in detections.values()})
+    counts = [sum(1 for d in detections.values() if d.score == s) for s in scores]
+    severity = {d.score: d.severity for d in detections.values()}
+    colors = [SEVERITY_COLORS.get(severity[s], NORMAL_COLOR) for s in scores]
+
+    fig, ax = plt.subplots(figsize=(9, 4.5))
+    ax.bar([str(s) for s in scores], counts, color=colors, width=0.6)
+    for x, c in enumerate(counts):
+        ax.text(x, c, f"{c}", ha="center", va="bottom", fontsize=8)
+    handles = [plt.Rectangle((0, 0), 1, 1, color=SEVERITY_COLORS[k]) for k in ("low", "medium", "high")]
+    ax.legend(handles, ["low (not reported)", "medium", "high"], frameon=False)
+    # Log scale: low scores are far more common than high ones.
+    ax.set_yscale("log")
+    ax.set_xlabel("Score (sum of capped group points)")
+    ax.set_ylabel("Number of source IPs (log scale)")
+    ax.set_title(title)
+    style_axes(ax)
+    ax.grid(axis="x", visible=False)
+    ax.grid(axis="y", color="#e5e5e5", linewidth=0.8)
+    fig.tight_layout()
+    fig.savefig(path, dpi=120)
+    plt.close(fig)

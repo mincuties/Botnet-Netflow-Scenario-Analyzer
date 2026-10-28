@@ -1,0 +1,12 @@
+# C&C servers labelled in data/scenarios/scenario10.binetflow.gz
+# Built by build_blocklist.py; one IP per line
+130.239.18.172  # 2 labelled C&C flows
+174.143.119.91  # 1 labelled C&C flows
+213.179.58.83  # 4 labelled C&C flows
+213.232.93.3  # 5 labelled C&C flows
+213.92.8.4  # 3 labelled C&C flows
+216.155.130.130  # 2 labelled C&C flows
+78.40.125.4  # 4 labelled C&C flows
+82.96.64.4  # 5 labelled C&C flows
+86.65.39.15  # 3 labelled C&C flows
+89.16.176.16  # 4 labelled C&C flows

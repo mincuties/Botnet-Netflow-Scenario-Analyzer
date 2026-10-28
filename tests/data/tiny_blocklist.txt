@@ -1,0 +1,2 @@
+# Hand-written test blocklist: one known C&C address
+10.0.0.102

@@ -1,0 +1,14 @@
+scenario,family,role,config,bots,bots_flagged,recall,normals,normals_flagged,background_flagged,flagged_total,precision
+5,Virut,dev,baseline,1,1,1.0,6,3,29,33,0.03
+5,Virut,dev,rules,1,1,1.0,6,1,12,14,0.07
+10,Rbot,test,baseline,10,10,1.0,7,4,97,111,0.09
+10,Rbot,test,rules,10,10,1.0,7,1,29,40,0.25
+11,Rbot,test,baseline,3,2,0.67,6,0,30,32,0.06
+11,Rbot,test,rules,3,3,1.0,6,0,13,16,0.19
+11,Rbot,test,rules_ml,3,3,1.0,6,1,39,43,0.07
+12,NSIS.ay (P2P),test,baseline,3,3,1.0,6,3,49,55,0.05
+12,NSIS.ay (P2P),test,rules,3,1,0.33,6,1,20,22,0.05
+12,NSIS.ay (P2P),test,rules_ml,3,3,1.0,6,3,70,76,0.04
+7,Sogou,test,baseline,1,0,0.0,5,0,35,35,0.0
+7,Sogou,test,rules,1,0,0.0,5,0,10,10,0.0
+7,Sogou,test,rules_ml,1,0,0.0,5,1,43,44,0.0

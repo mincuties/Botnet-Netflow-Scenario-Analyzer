@@ -1,28 +1,10 @@
-src_ip,rules,evidence,n_flows,n_dst_ips,n_dst_ports,src_bytes,total_bytes,label_class
-147.32.84.229,fanout,n_dst_ips=5124 >= 50,5416,5124,4926,3215049,7028531,background
-147.32.84.59,fanout;large_upload,n_dst_ips=2861 >= 50; src_bytes=563502319 >= 10000000,9753,2861,2120,563502319,2275267671,background
-147.32.84.94,fanout;large_upload,n_dst_ips=1719 >= 50; src_bytes=22923002 >= 10000000,2443,1719,868,22923002,317943103,background
-147.32.86.223,fanout,n_dst_ips=159 >= 50,554,159,142,426733,1589841,background
-147.32.86.165,fanout,n_dst_ips=139 >= 50,326,139,102,613424,3472706,background
-147.32.87.220,fanout,n_dst_ips=135 >= 50,136,135,132,43724,80101,background
-147.32.84.111,fanout,n_dst_ips=123 >= 50,131,123,124,51009,160088,background
-147.32.85.26,fanout,n_dst_ips=109 >= 50,344,109,86,402456,1530602,background
-147.32.85.7,fanout,n_dst_ips=84 >= 50,1402,84,4,2565903,97180320,background
-147.32.84.184,fanout,n_dst_ips=84 >= 50,329,84,58,441221,4380121,background
-147.32.86.134,fanout,n_dst_ips=80 >= 50,900,80,5,1003687,11941567,background
-147.32.86.171,fanout,n_dst_ips=79 >= 50,290,79,42,542890,8747509,background
-147.32.85.120,fanout,n_dst_ips=66 >= 50,101,66,7,934566,6878517,background
-147.32.84.118,fanout,n_dst_ips=65 >= 50,76,65,62,41649,80367,background
-147.32.87.248,fanout,n_dst_ips=62 >= 50,65,62,62,23289,39008,background
-147.32.86.183,fanout,n_dst_ips=57 >= 50,75,57,54,78073,1905250,background
-147.32.84.194,fanout,n_dst_ips=56 >= 50,120,56,55,474001,3678439,background
-147.32.87.238,fanout,n_dst_ips=56 >= 50,269,56,38,317952,2168326,background
-147.32.86.58,fanout,n_dst_ips=50 >= 50,507,50,21,1146788,8061955,background
-147.32.80.13,large_upload,src_bytes=49942835 >= 10000000,48,19,26,49942835,51854181,background
-147.32.85.109,large_upload,src_bytes=10378112 >= 10000000,87,3,3,10378112,437029478,background
-195.250.146.107,large_upload,src_bytes=27108740 >= 10000000,2,2,2,27108740,28271012,background
-109.80.225.83,large_upload,src_bytes=40750176 >= 10000000,2,1,2,40750176,42215556,background
-88.176.79.163,large_upload,src_bytes=28023366 >= 10000000,10,1,10,28023366,1099566016,background
-74.63.47.82,large_upload,src_bytes=21279353 >= 10000000,1,1,1,21279353,21733457,background
-95.168.207.36,large_upload,src_bytes=10516370 >= 10000000,1,1,1,10516370,10719218,background
-85.160.19.97,large_upload,src_bytes=10066414 >= 10000000,1,1,1,10066414,10428706,background
+src_ip,severity,score,signals,evidence,n_flows,n_dst_ips,n_dst_ports,src_bytes,total_bytes,first_seen,last_seen,label_class
+147.32.84.59,high,5,fanout;large_upload;port_scan;burst;beaconing,fanout: distinct destination IPs=2861 >= 50; large_upload: bytes sent=563502319 >= 10000000; port_scan: distinct destination ports in one window=1337 >= 20; burst: flows in one window=5551 >= 503; beaconing: lowest gap CV to one destination=0.00 <= 0.10,9753,2861,2120,563502319,2275267671,2011-08-16 13:51:24,2011-08-16 14:01:45,background
+147.32.84.229,medium,4,fanout;port_scan;burst,fanout: distinct destination IPs=5124 >= 50; port_scan: distinct destination ports in one window=2624 >= 20; burst: flows in one window=2812 >= 503,5416,5124,4926,3215049,7028531,2011-08-16 13:51:24,2011-08-16 14:01:44,background
+147.32.84.94,medium,4,fanout;large_upload;port_scan;burst,fanout: distinct destination IPs=1719 >= 50; large_upload: bytes sent=22923002 >= 10000000; port_scan: distinct destination ports in one window=572 >= 20; burst: flows in one window=1709 >= 503,2443,1719,868,22923002,317943103,2011-08-16 13:51:24,2011-08-16 14:01:34,background
+147.32.86.223,medium,4,fanout;port_scan;burst,fanout: distinct destination IPs=159 >= 50; port_scan: distinct destination ports in one window=142 >= 20; burst: flows in one window=539 >= 503,554,159,142,426733,1589841,2011-08-16 13:51:35,2011-08-16 14:01:31,background
+147.32.85.7,medium,4,fanout;burst,fanout: distinct destination IPs=84 >= 50; burst: flows in one window=707 >= 503,1402,84,4,2565903,97180320,2011-08-16 13:51:36,2011-08-16 14:01:42,background
+147.32.86.134,medium,4,fanout;burst,fanout: distinct destination IPs=80 >= 50; burst: flows in one window=827 >= 503,900,80,5,1003687,11941567,2011-08-16 13:51:24,2011-08-16 14:01:18,background
+147.32.80.13,medium,4,large_upload;port_scan,large_upload: bytes sent=49942835 >= 10000000; port_scan: distinct destination ports in one window=26 >= 20,48,19,26,49942835,51854181,2011-08-16 13:51:24,2011-08-16 14:00:03,background
+147.32.86.77,medium,3,port_scan;beaconing,port_scan: distinct destination ports in one window=26 >= 20; beaconing: lowest gap CV to one destination=0.01 <= 0.10,147,19,31,877691,12590031,2011-08-16 13:51:55,2011-08-16 14:01:12,background
+147.32.84.166,medium,3,blocklist,blocklist: flows to blocklisted IPs=1 >= 1,40,7,4,20703,44752,2011-08-16 13:51:26,2011-08-16 14:01:32,background

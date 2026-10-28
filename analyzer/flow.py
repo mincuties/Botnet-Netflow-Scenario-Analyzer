@@ -8,7 +8,9 @@ from dataclasses import dataclass
 from datetime import datetime
 
 
-@dataclass
+# slots=True stores the fields compactly, which matters for files with
+# more than a million rows.
+@dataclass(slots=True)
 class Flow:
     """One cleaned row of the netflow file.
 
@@ -25,6 +27,7 @@ class Flow:
     src_bytes: int | None = None
     total_bytes: int | None = None
     label: str = ""
+    state: str = ""
 
     def is_from_botnet(self):
         """True if the CTU-13 label says the SOURCE of this flow is a bot.
@@ -35,6 +38,26 @@ class Flow:
         check looks for "from-botnet" and not just "botnet".
         """
         return "from-botnet" in self.label.lower()
+
+    def is_failed_tcp(self):
+        """True if this is a TCP connection attempt that was never accepted.
+
+        CTU-13 writes the TCP flags seen from each side as "SOURCE_DEST",
+        for example "S_RA" (SYN sent, answered with RST) or "SRPA_SPA"
+        (normal connection). The attempt failed when the source sent a SYN
+        ("S" before the underscore) but the destination never sent one back
+        (no "S" after the underscore).
+        """
+        if self.protocol != "tcp" or "_" not in self.state:
+            return False
+        source_flags, dest_flags = self.state.split("_", 1)
+        return "S" in source_flags and "S" not in dest_flags
+
+    def is_tcp_attempt(self):
+        """True if the source opened a TCP connection (sent a SYN)."""
+        if self.protocol != "tcp" or "_" not in self.state:
+            return False
+        return "S" in self.state.split("_", 1)[0]
 
     def is_from_normal(self):
         """True if the label says the source is a known clean machine."""
