@@ -21,7 +21,6 @@ An optional decision-tree layer uses scikit-learn.
 9. [Project structure](#9-project-structure)
 10. [Assessment criteria](#10-assessment-criteria)
 11. [Limitations](#11-limitations)
-12. [Acknowledgement](#12-acknowledgement)
 
 ## 1. Quick start
 
@@ -541,7 +540,3 @@ tests/
 - The program analyses one file at a time, offline, and keeps all flows in memory.
 - The blocklist knows only the servers seen in scenario 10; real lists change daily.
 - The decision tree is trained on two captures of two families and does not generalise well.
-
-## 12. Acknowledgement
-
-An AI assistant (Claude) was used during development.
