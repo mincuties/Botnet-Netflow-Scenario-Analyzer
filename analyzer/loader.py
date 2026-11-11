@@ -7,6 +7,7 @@ file missing, file empty, or a required column missing.
 
 import csv
 import gzip
+import zlib
 from collections import Counter
 from dataclasses import dataclass, field
 
@@ -48,6 +49,7 @@ class LoadResult:
     missing_optional: list = field(default_factory=list)
     ignored_columns: list = field(default_factory=list)
     delimiter: str = ","
+    unreadable_times: int = 0                           # kept rows whose StartTime could not be read
 
 
 def simplify_name(name):
@@ -168,6 +170,10 @@ def load_flows(path, time_format="%Y/%m/%d %H:%M:%S.%f"):
                 if len(row) == 0 or all(cell.strip() == "" for cell in row):
                     continue  # blank line: not data, not an error
                 result.rows_read += 1
+                # Some tools end every data line with a comma, which adds
+                # one empty field: drop it instead of losing the row.
+                if len(row) == len(header) + 1 and row[-1].strip() == "":
+                    row = row[:-1]
                 if len(row) != len(header):
                     result.skipped[f"wrong number of fields (expected {len(header)})"] += 1
                     continue
@@ -176,6 +182,8 @@ def load_flows(path, time_format="%Y/%m/%d %H:%M:%S.%f"):
                 except ValueError as error:
                     result.skipped[short_reason(error)] += 1
                     continue
+                if "StartTime" in positions and flow.start_time is None:
+                    result.unreadable_times += 1
                 result.flows.append(flow)
     except FileNotFoundError:
         raise LoaderError(f"input file not found: {path}")
@@ -183,6 +191,9 @@ def load_flows(path, time_format="%Y/%m/%d %H:%M:%S.%f"):
         raise LoaderError(f"file is not UTF-8 text (is it really a CSV?): {path}")
     except csv.Error as error:
         raise LoaderError(f"CSV format problem: {error}")
+    except (EOFError, zlib.error):
+        # A .gz file that was cut short or damaged fails in the middle of reading.
+        raise LoaderError(f"compressed file is damaged or incomplete: {path}")
     except OSError as error:
         # For example: the path is a folder, or read permission is missing.
         raise LoaderError(f"cannot open input file: {error}")

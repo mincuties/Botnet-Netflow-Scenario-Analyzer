@@ -8,8 +8,8 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from analyzer.detectors import (Signal, evaluate_against_labels, run_detection, severity_of,
-                                signals_for_ip, total_score)
+from analyzer.detectors import (Signal, evaluate_against_labels, is_monitored, run_detection,
+                                severity_of, signals_for_ip, total_score)
 from analyzer.features import compute_ip_stats, describe, gap_statistics, pair_regularity
 from analyzer.flow import Flow
 from analyzer.loader import load_flows
@@ -158,3 +158,34 @@ def test_threshold_tuning_scores():
     tp, fp, fn, precision, recall, f1 = score_thresholds(values, is_bot, np.array([5, 10]))
     assert list(tp) == [2, 2] and list(fp) == [1, 0] and list(fn) == [0, 0]
     assert f1[1] == 1.0
+
+
+def test_failed_tcp_min_attempts_is_inclusive():
+    assert fired(make_stats(tcp_attempts=3, tcp_failed=2)) == ["failed_tcp"]   # exactly min_attempts 3
+
+
+def test_missing_port_is_not_counted_as_a_port():
+    stats = compute_ip_stats([Flow("A", "X", dst_port=80), Flow("A", "Y")])
+    assert stats["A"]["n_dst_ports"] == 1
+
+
+@pytest.mark.parametrize("regular_first", [True, False])
+def test_beaconing_keeps_the_most_regular_destination(regular_first):
+    regular = [Flow("A", "C2", start_time=T0 + timedelta(seconds=s)) for s in (0, 10, 20, 30)]
+    uneven = [Flow("A", "web", start_time=T0 + timedelta(seconds=s)) for s in (0, 10, 40)]
+    flows = regular + uneven if regular_first else uneven + regular
+    assert pair_regularity(flows, min_flows=3)["A"] == (0.0, "C2", 4)
+
+
+def test_prefix_must_match_the_start_of_the_ip():
+    assert is_monitored("147.32.84.165", "147.32.")
+    assert not is_monitored("10.147.32.1", "147.32.")
+    assert is_monitored("8.8.8.8", "")
+
+
+def test_ip_with_both_bot_and_normal_labels_counts_as_bot_only():
+    flows = [Flow("A", "x", label="flow=From-Botnet-V1"), Flow("A", "y", label="flow=From-Normal-V1"),
+             Flow("B", "x", label="flow=From-Normal-V1")]
+    result = evaluate_against_labels({"A": None}, compute_ip_stats(flows))
+    assert (result["bot_ips"], result["normal_ips"]) == (1, 1)
+    assert (result["flagged_bots"], result["flagged_normals"]) == (1, 0)

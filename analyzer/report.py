@@ -128,6 +128,10 @@ def build_summary(input_path, load_result, analysis, config, evaluation):
         lines.append("Optional columns missing: " + ", ".join(load_result.missing_optional))
     if load_result.ignored_columns:
         lines.append("Columns ignored (not used): " + ", ".join(load_result.ignored_columns))
+    if load_result.unreadable_times > 0:
+        lines.append(f"Warning: StartTime could not be read in {load_result.unreadable_times} of "
+                     f"{len(load_result.flows)} valid flows (time_format is '{config['time_format']}'); "
+                     "these flows are left out of port_scan, burst and beaconing")
     lines.append("")
 
     if len(load_result.flows) == 0:
@@ -138,6 +142,9 @@ def build_summary(input_path, load_result, analysis, config, evaluation):
     monitored = [ip for ip in ip_stats if ip.startswith(prefix)]
     lines.append(f"Distinct source IPs: {len(ip_stats)}")
     lines.append(f"Monitored source IPs (prefix '{prefix}'): {len(monitored)}")
+    if len(monitored) == 0:
+        lines.append(f"Warning: no source IP starts with '{prefix}', so no host is judged; set "
+                     "monitored_prefix in the config to the network of this capture, or to \"\" for every host")
     lines.append(f"Source IP x {config['window_seconds']} s windows: {len(analysis.windows)}")
     lines.append("Per source IP statistics (NumPy):")
     lines.append(format_stats("n_flows", [s["n_flows"] for s in ip_stats.values()]))

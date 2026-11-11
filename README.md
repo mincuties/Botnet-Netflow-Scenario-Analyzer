@@ -36,7 +36,7 @@ pip install -r requirements.txt
 python main.py --input data/sample.csv                 # rule-based analysis
 python main.py --input data/sample.csv --ml            # plus the decision tree
 python main.py --input data/scenarios/scenario11.binetflow.gz
-python -m pytest                                       # 94 tests
+python -m pytest                                       # 112 tests
 ```
 
 | Argument | Required | Default | Meaning |
@@ -173,12 +173,14 @@ says which ones.
 
 | Situation | Behaviour |
 |---|---|
-| file missing, empty, binary, or missing a required column | stop, `Error: ...`, exit code 1 |
+| file missing, empty, binary, a damaged or incomplete `.gz`, or missing a required column | stop, `Error: ...`, exit code 1 |
 | header only | outputs written, summary states "No valid flows" |
 | empty `SrcAddr` or `DstAddr` | row skipped, counted by reason |
 | byte count empty, not a whole number, or negative | row skipped, counted by reason |
 | row with a different number of fields from the header | row skipped, counted by reason |
-| invalid port or time | row kept, value left empty |
+| invalid port or time | row kept, value left empty; the summary warns how many times could not be read and names `time_format` |
+| one extra empty field at the end of a row (trailing separator) | extra field dropped, row kept |
+| no source IP starts with `monitored_prefix` | analysed, nothing can be flagged; the summary warns and names the setting |
 | blank line | ignored |
 | unknown extra columns | ignored, listed in the summary |
 | comma, semicolon or tab separator; UTF-8 byte-order mark | detected automatically |
@@ -388,13 +390,13 @@ On scenario 10 (1,309,791 flows, 179 MB uncompressed) loading takes about 25 sec
 ## 8. Testing
 
 ```bash
-python -m pytest        # 94 tests, about 10 seconds
+python -m pytest        # 112 tests, about 10 seconds
 ```
 
 | File | Covers |
 |---|---|
 | `tests/test_flow.py` | counts, decimal and hexadecimal ports, times, label direction |
-| `tests/test_loader.py` | one test per edge-case file in `tests/bad_files/` (13 files) |
+| `tests/test_loader.py` | one test per edge-case file in `tests/bad_files/` (15 files), damaged `.gz` files |
 | `tests/test_features_detectors.py` | distinct counts, gaps, beaconing CV by hand, every signal at its boundary, group caps, severity levels, monitored prefix, label evaluation |
 | `tests/test_windows_blocklist.py` | window boundaries, burst percentile and minimum, tree features, blocklist file and hits |
 | `tests/test_ml_model.py` | training is reproducible, probabilities, the shipped model with `--ml` (skipped without scikit-learn) |
@@ -476,6 +478,8 @@ recommended_blocks.csv
 | `bad_time_and_port.csv` | row kept, time and port empty |
 | `bad_values.csv` | 5 of 6 rows skipped, one line per reason |
 | `wrong_field_count.csv` | short and long rows skipped, blank line ignored |
+| `trailing_comma.csv` | rows ending with a comma are kept |
+| `other_time_format.csv` | rows kept, 2 of 3 times unreadable, warning in the summary |
 
 `test_every_bad_file_is_handled_without_crash` runs the whole program on every file in that
 folder and accepts only exit code 0 or 1.
@@ -513,7 +517,7 @@ docs/
   example_outputs/      outputs of the run on data/sample.csv
   results/              evaluation tables, threshold sweep, tree as text and picture
 tests/
-  bad_files/            13 edge-case files
+  bad_files/            15 edge-case files
   data/                 hand-computed test case
 ```
 
@@ -524,7 +528,7 @@ tests/
 | Data and reproducibility | sources, links and SHA-256 checksums (section 6); `requirements.txt`; fixed random seed; scripts that rebuild the sample, the blocklist, the model and every result table; deterministic output order |
 | Functional correctness | columns by name, required and optional columns, gzip input, row validation with counted reasons, clear errors (section 3) |
 | Course concepts | functions with one task each; `dict` keyed by IP and by `(IP, window)` tuples; `set` for distinct counts; `Counter`; CSV, JSON and gzip file I/O; NumPy (`diff`, `mean`, `std`, `percentile`); Matplotlib; `dataclass` (`Flow`, `Signal`, `Detection`, `Analysis`); custom exceptions |
-| Testing | 94 tests, 13 edge-case files, one hand-computed case, boundary tests for every signal (section 8) |
+| Testing | 112 tests, 15 edge-case files, one hand-computed case, boundary tests for every signal (section 8) |
 | Analysis | evidence for every flag; comparison with labels; dev/test split; baseline comparison; missed bot and false alarms reported (section 7) |
 | Code quality | small modules with docstrings, all thresholds in `config.json`, optional dependency isolated |
 

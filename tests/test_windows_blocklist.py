@@ -41,6 +41,9 @@ def test_burst_threshold_percentile_and_minimum():
     assert burst_threshold(windows, 100, 5) == 100      # the busiest window
     assert burst_threshold(windows, 50, 5) == 5         # median 3 -> raised to the minimum
     assert burst_threshold({}, 99.9, 7) == 7
+    # A percentile between two counts is rounded UP: median of [1, 2] is 1.5 -> 2.
+    two = {("a", 0): {"n_flows": 1}, ("b", 0): {"n_flows": 2}}
+    assert burst_threshold(two, 50, 1) == 2
 
 
 def test_window_features_for_the_tree():
