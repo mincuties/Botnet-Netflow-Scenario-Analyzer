@@ -1,10 +1,11 @@
 """Tests for loader.py: one test per edge case in tests/bad_files/."""
 
+import gzip
 import os
 
 import pytest
 
-from analyzer.loader import LoaderError, load_flows
+from analyzer.loader import LoaderError, load_flows, map_header
 
 BAD = os.path.join(os.path.dirname(__file__), "bad_files")
 
@@ -97,3 +98,53 @@ def test_bad_time_and_port_keep_the_row():
     flow = result.flows[0]
     assert flow.start_time is None
     assert flow.dst_port is None
+
+
+def test_trailing_comma_on_data_rows_is_accepted():
+    result = load_flows(path("trailing_comma.csv"))
+    assert result.rows_read == 2
+    assert len(result.flows) == 2
+    assert sum(result.skipped.values()) == 0
+    assert result.flows[1].label == "flow=Background"
+
+
+def test_unreadable_times_are_counted():
+    # Three rows: ISO date, epoch seconds, and one in the configured format.
+    result = load_flows(path("other_time_format.csv"))
+    assert len(result.flows) == 3
+    assert result.unreadable_times == 2
+    assert load_flows(path("no_label.csv")).unreadable_times == 0
+
+
+def test_repeated_column_name_keeps_the_first():
+    positions, ignored = map_header(["SrcAddr", "DstAddr", "src_ip"])
+    assert positions == {"SrcAddr": 0, "DstAddr": 1}
+    assert ignored == []
+
+
+def gzip_bytes_of(name):
+    with open(path(name), "rb") as file:
+        return gzip.compress(file.read() * 200)
+
+
+def test_truncated_gzip_gives_clear_error(tmp_path):
+    data = gzip_bytes_of("no_label.csv")
+    cut = tmp_path / "cut.csv.gz"
+    cut.write_bytes(data[:len(data) // 2])
+    with pytest.raises(LoaderError, match="damaged or incomplete"):
+        load_flows(str(cut))
+
+
+def test_corrupt_gzip_gives_clear_error(tmp_path):
+    data = gzip_bytes_of("no_label.csv")
+    broken = tmp_path / "broken.csv.gz"
+    broken.write_bytes(data[:20] + b"\x00" * 50 + data[70:])
+    with pytest.raises(LoaderError, match="damaged or incomplete"):
+        load_flows(str(broken))
+
+
+def test_text_file_named_gz_gives_clear_error(tmp_path):
+    fake = tmp_path / "fake.csv.gz"
+    fake.write_text("SrcAddr,DstAddr\n10.0.0.1,10.0.0.2\n", encoding="utf-8")
+    with pytest.raises(LoaderError, match="cannot open"):
+        load_flows(str(fake))

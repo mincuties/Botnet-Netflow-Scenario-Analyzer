@@ -136,3 +136,40 @@ def test_file_without_state_and_time_columns(tmp_path):
     assert "no StartTime column, port_scan, burst and beaconing cannot fire" in summary
     assert "No Label column" in summary
     assert "10.0.0.1 [medium, score 2]: fanout" in summary
+
+
+def test_capture_of_another_network_gets_a_warning(tmp_path):
+    data = tmp_path / "other.csv"
+    data.write_text("SrcAddr,DstAddr\n192.168.1.5,8.8.8.8\n", encoding="utf-8")
+    code = main(["--input", str(data), "--config", TINY_CONFIG, "--output", str(tmp_path / "out")])
+    assert code == 0
+    summary = (tmp_path / "out" / "summary.txt").read_text(encoding="utf-8")
+    assert "Monitored source IPs (prefix '10.0.0.'): 0" in summary
+    assert "Warning: no source IP starts with '10.0.0.', so no host is judged" in summary
+
+
+def test_no_prefix_warning_when_a_host_is_monitored(tmp_path):
+    code = main(["--input", os.path.join(BAD, "single_flow.csv"), "--config", TINY_CONFIG,
+                 "--output", str(tmp_path)])
+    assert code == 0
+    assert "Warning" not in (tmp_path / "summary.txt").read_text(encoding="utf-8")
+
+
+def test_unreadable_times_get_a_warning(tmp_path):
+    code = main(["--input", os.path.join(BAD, "other_time_format.csv"), "--config", TINY_CONFIG,
+                 "--output", str(tmp_path)])
+    assert code == 0
+    summary = (tmp_path / "summary.txt").read_text(encoding="utf-8")
+    assert "Warning: StartTime could not be read in 2 of 3 valid flows" in summary
+    assert "time_format is '%Y/%m/%d %H:%M:%S.%f'" in summary
+
+
+def test_damaged_gzip_returns_exit_code_1(tmp_path, capsys):
+    import gzip
+    with open(os.path.join(BAD, "no_label.csv"), "rb") as file:
+        data = gzip.compress(file.read() * 200)
+    cut = tmp_path / "cut.csv.gz"
+    cut.write_bytes(data[:len(data) // 2])
+    code = main(["--input", str(cut), "--config", TINY_CONFIG, "--output", str(tmp_path / "out")])
+    assert code == 1
+    assert capsys.readouterr().err.startswith("Error: compressed file is damaged or incomplete")
