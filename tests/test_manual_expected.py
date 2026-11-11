@@ -8,7 +8,7 @@ on paper; the working is in README.md, section "Hand-computed test case".
 import csv
 import os
 
-from analyzer.features import compute_ip_stats
+from analyzer.features import compute_ip_stats, gap_statistics
 from analyzer.loader import load_flows
 from analyzer.windows import compute_windows
 from main import main
@@ -30,12 +30,13 @@ def test_ip_stats_match_hand_calculation():
     a = stats["10.0.0.1"]
     assert (a["n_flows"], a["total_bytes"], a["src_bytes"]) == (4, 1000, 600)
     assert (a["n_dst_ips"], a["n_dst_ports"]) == (3, 3)
-    assert (a["mean_gap_s"], a["std_gap_s"]) == (10.0, 0.0)
+    times = [f.start_time for f in load_flows(TINY).flows if f.src_ip == "10.0.0.1"]
+    assert gap_statistics(times) == (10.0, 0.0)               # flows at 00, 10, 20, 30 s
     assert (a["tcp_attempts"], a["tcp_failed"]) == (3, 1)     # row 4 is S_RA
     b = stats["10.0.0.2"]
     assert (b["n_flows"], b["total_bytes"], b["src_bytes"], b["n_dst_ips"]) == (2, 8000, 2400, 1)
     c = stats["10.0.0.3"]
-    assert (c["n_dst_ports"], c["mean_gap_s"]) == (1, None)   # hex port 0x0008, single flow
+    assert c["n_dst_ports"] == 1                               # hex port 0x0008
     assert stats["10.0.0.4"]["is_bot"] is False                # To-Botnet label
 
 

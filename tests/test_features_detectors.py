@@ -44,8 +44,7 @@ def test_distinct_destinations_use_a_set():
 
 def test_single_flow_has_no_gap_statistics():
     result = load_flows(os.path.join(BAD, "single_flow.csv"))
-    stats = compute_ip_stats(result.flows)
-    assert stats["10.0.0.1"]["mean_gap_s"] is None
+    assert gap_statistics([f.start_time for f in result.flows]) == (None, None)
 
 
 def test_gap_statistics_with_numpy():

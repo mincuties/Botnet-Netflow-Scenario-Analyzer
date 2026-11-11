@@ -52,7 +52,6 @@ def compute_ip_stats(flows):
         dst_ips = {f.dst_ip for f in ip_flows}
         dst_ports = {f.dst_port for f in ip_flows if f.dst_port is not None}
         times = [f.start_time for f in ip_flows if f.start_time is not None]
-        mean_gap, std_gap = gap_statistics(times)
         tcp_attempts = sum(1 for f in ip_flows if f.is_tcp_attempt())
         tcp_failed = sum(1 for f in ip_flows if f.is_failed_tcp())
         stats[ip] = {
@@ -61,8 +60,6 @@ def compute_ip_stats(flows):
             "n_dst_ports": len(dst_ports),
             "src_bytes": sum_or_none([f.src_bytes for f in ip_flows]),
             "total_bytes": sum_or_none([f.total_bytes for f in ip_flows]),
-            "mean_gap_s": mean_gap,
-            "std_gap_s": std_gap,
             "tcp_attempts": tcp_attempts,
             "tcp_failed": tcp_failed,
             "first_seen": min(times) if times else None,
