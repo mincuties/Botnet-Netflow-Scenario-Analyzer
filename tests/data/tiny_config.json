@@ -13,7 +13,6 @@
     "beaconing":    {"max_cv": 0.1, "min_flows": 3, "points": 1, "group": "control"},
     "blocklist":    {"points": 3, "group": "control"}
   },
-  "group_caps": {"spread": 2, "volume": 2, "control": 3, "ml": 2},
-  "severity": {"low": 1, "medium": 2, "high": 5},
-  "ml": {"enabled": false, "model_file": "../../models/decision_tree.pkl", "min_probability": 0.5, "points": 2}
+  "group_caps": {"spread": 2, "volume": 2, "control": 3},
+  "severity": {"low": 1, "medium": 2, "high": 5}
 }

@@ -98,13 +98,13 @@ def test_failed_tcp_needs_enough_attempts():
     assert fired(make_stats(tcp_attempts=4, tcp_failed=1)) == []
 
 
-def test_window_beacon_blocklist_and_ml_signals():
+def test_window_beacon_and_blocklist_signals():
     extra = {"window": {"max_window_flows": 100, "max_window_ports": 3},
-             "beacon": (0.1, "C2", 12), "blocklist_hits": 2, "ml_probability": 0.5}
+             "beacon": (0.1, "C2", 12), "blocklist_hits": 2}
     assert fired(make_stats(), extra, burst_limit=100) == [
-        "port_scan", "burst", "beaconing", "blocklist", "ml"]
+        "port_scan", "burst", "beaconing", "blocklist"]
     extra = {"window": {"max_window_flows": 99, "max_window_ports": 2},
-             "beacon": (0.11, "C2", 12), "blocklist_hits": 0, "ml_probability": 0.49}
+             "beacon": (0.11, "C2", 12), "blocklist_hits": 0}
     assert fired(make_stats(), extra, burst_limit=100) == []
 
 

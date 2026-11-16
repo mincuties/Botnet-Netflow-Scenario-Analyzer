@@ -23,7 +23,6 @@ SIGNAL_MEASURES = {
     "burst": "flows in one window",
     "beaconing": "lowest gap CV to one destination",
     "blocklist": "flows to blocklisted IPs",
-    "ml": "decision tree bot probability",
 }
 
 SEVERITY_ORDER = ["none", "low", "medium", "high"]
@@ -32,7 +31,7 @@ SEVERITY_ORDER = ["none", "low", "medium", "high"]
 @dataclass
 class Signal:
     name: str         # key of SIGNAL_MEASURES
-    group: str        # "spread", "volume", "control" or "ml"
+    group: str        # "spread", "volume" or "control"
     value: float      # measured value for this IP
     threshold: float  # limit from config.json (or computed from the data)
     points: int
@@ -70,7 +69,7 @@ def signals_for_ip(ip, stats, extra, config, burst_limit):
     """Run every signal for one IP and return the list of those that fire.
 
     `extra` holds the per-IP results computed outside features.py:
-    window maxima, beaconing, blocklist hits and the decision tree score.
+    window maxima, beaconing and blocklist hits.
     """
     s = config["signals"]
     fired = []
@@ -100,12 +99,6 @@ def signals_for_ip(ip, stats, extra, config, burst_limit):
     hits = extra.get("blocklist_hits", 0)
     if hits > 0:
         fired.append(Signal("blocklist", s["blocklist"]["group"], hits, 1, s["blocklist"]["points"]))
-
-    probability = extra.get("ml_probability")
-    if probability is not None:
-        ml = config["ml"]
-        if probability >= ml["min_probability"]:
-            fired.append(Signal("ml", "ml", probability, ml["min_probability"], ml["points"]))
     return fired
 
 

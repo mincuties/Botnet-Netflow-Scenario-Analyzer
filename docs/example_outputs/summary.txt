@@ -22,8 +22,7 @@ Signals (points, group): rule
   burst        (+2, volume): flows in one window >= 503 (percentile 99.9, minimum 100)
   beaconing    (+1, control): gap CV <= 0.1 over >= 10 flows to one destination
   blocklist    (+3, control): any flow to 10 blocklisted IPs
-  ml: not used (run with --ml to enable)
-  group caps: control 3, ml 2, spread 2, volume 2
+  group caps: control 3, spread 2, volume 2
   severity: low >= 1, medium >= 3, high >= 5 (medium and high are reported)
 IPs by severity: high 1, medium 8, low 33 (low is not reported)
 Flagged source IPs: 9 (details in report.csv; high severity also in recommended_blocks.csv)

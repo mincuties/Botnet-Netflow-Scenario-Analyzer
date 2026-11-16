@@ -34,10 +34,6 @@ REQUIRED = [
     (("severity", "low"), int, 1),
     (("severity", "medium"), int, 1),
     (("severity", "high"), int, 1),
-    (("ml", "enabled"), bool, None),
-    (("ml", "model_file"), str, None),
-    (("ml", "min_probability"), "number", 0),
-    (("ml", "points"), int, 0),
 ]
 for _name in SIGNAL_NAMES:
     REQUIRED.append((("signals", _name, "points"), int, 0))
@@ -59,9 +55,6 @@ def check_type(value, expected, name):
     if expected == "number":
         ok = isinstance(value, (int, float)) and not isinstance(value, bool)
         type_name = "number"
-    elif expected is bool:
-        ok = isinstance(value, bool)
-        type_name = "true/false"
     else:
         ok = isinstance(value, expected) and not isinstance(value, bool)
         type_name = expected.__name__
@@ -98,7 +91,7 @@ def load_config(path):
         raise ConfigError("severity levels must satisfy low <= medium <= high")
 
     caps = value_at(config, ("group_caps",))
-    groups = {config["signals"][n]["group"] for n in SIGNAL_NAMES} | {"ml"}
+    groups = {config["signals"][n]["group"] for n in SIGNAL_NAMES}
     for group in sorted(groups):
         if group not in caps:
             raise ConfigError(f"'group_caps' has no entry for group '{group}'")
@@ -109,5 +102,4 @@ def load_config(path):
     folder = os.path.dirname(os.path.abspath(path))
     if config["blocklist_file"] != "":
         config["blocklist_file"] = os.path.join(folder, config["blocklist_file"])
-    config["ml"]["model_file"] = os.path.join(folder, config["ml"]["model_file"])
     return config

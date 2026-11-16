@@ -2,22 +2,15 @@
 
 Usage:
     python evaluate.py --config config.json
-    python evaluate.py --config config.json --skip-ml   (without scikit-learn)
 
-Three configurations are compared on the same files:
+Two configurations are compared on the same files:
   baseline   two simple rules (fan-out, large upload), either one flags
   rules      all signals, group caps, severity, plus the C&C blocklist (default)
-  rules_ml   rules plus the decision tree (--ml)
 
 Honest-measurement rules, applied in SCENARIOS below:
   - settings were chosen on scenario 5 only ("dev"); the others are "test";
-  - the blocklist comes from scenario 10, so it is switched off there;
-  - the tree was trained on scenarios 5 and 10, so it is not scored there.
-Writes docs/results/evaluation.csv and docs/results/evaluation.md, and
-docs/results/ml_threshold_sweep.md: rules_ml with several values of
-ml.min_probability. The sweep is reported for information only; the
-setting in config.json is not changed from it, because it is measured on
-test scenarios.
+  - the blocklist comes from scenario 10, so it is switched off there.
+Writes docs/results/evaluation.csv and docs/results/evaluation.md.
 """
 
 import argparse
@@ -31,16 +24,14 @@ from analyzer.detectors import evaluate_against_labels
 from analyzer.loader import load_flows
 from analyzer.pipeline import analyze
 
-# (scenario, file, bot family, role, blocklist allowed, tree allowed)
+# (scenario, file, bot family, role, blocklist allowed)
 SCENARIOS = [
-    ("5", "data/scenarios/scenario05.binetflow.gz", "Virut", "dev", True, False),
-    ("10", "data/scenarios/scenario10.binetflow.gz", "Rbot", "test", False, False),
-    ("11", "data/scenarios/scenario11.binetflow.gz", "Rbot", "test", True, True),
-    ("12", "data/scenarios/scenario12.binetflow.gz", "NSIS.ay (P2P)", "test", True, True),
-    ("7", "data/scenarios/scenario07.binetflow.gz", "Sogou", "test", True, True),
+    ("5", "data/scenarios/scenario05.binetflow.gz", "Virut", "dev", True),
+    ("10", "data/scenarios/scenario10.binetflow.gz", "Rbot", "test", False),
+    ("11", "data/scenarios/scenario11.binetflow.gz", "Rbot", "test", True),
+    ("12", "data/scenarios/scenario12.binetflow.gz", "NSIS.ay (P2P)", "test", True),
+    ("7", "data/scenarios/scenario07.binetflow.gz", "Sogou", "test", True),
 ]
-
-SWEEP_PROBABILITIES = [0.5, 0.7, 0.9, 0.99]
 
 COLUMNS = ["scenario", "family", "role", "config", "bots", "bots_flagged", "recall",
            "normals", "normals_flagged", "background_flagged", "flagged_total", "precision"]
@@ -87,20 +78,14 @@ def main():
     parser = argparse.ArgumentParser(description="Evaluate on all CTU-13 scenarios.")
     parser.add_argument("--config", default="config.json")
     parser.add_argument("--results", default="docs/results")
-    parser.add_argument("--skip-ml", action="store_true")
     args = parser.parse_args()
 
     config = load_config(args.config)
     baseline = baseline_config(config)
     blocked = load_blocklist(config["blocklist_file"])
-    tree = None
-    if not args.skip_ml:
-        from analyzer.ml_model import load_model
-        tree = load_model(config["ml"]["model_file"])
 
     rows = []
-    sweep = []
-    for scenario, path, family, role, use_blocklist, use_tree in SCENARIOS:
+    for scenario, path, family, role, use_blocklist in SCENARIOS:
         if not os.path.exists(path):
             print(f"skipped scenario {scenario}: {path} not found")
             continue
@@ -110,14 +95,6 @@ def main():
         lists = blocked if use_blocklist else set()
         rows.append(result_row(scenario, family, role, "baseline", analyze(flows, baseline), prefix))
         rows.append(result_row(scenario, family, role, "rules", analyze(flows, config, lists), prefix))
-        if tree is not None and use_tree:
-            rows.append(result_row(scenario, family, role, "rules_ml",
-                                   analyze(flows, config, lists, tree), prefix))
-            for probability in SWEEP_PROBABILITIES:
-                swept = copy.deepcopy(config)
-                swept["ml"]["min_probability"] = probability
-                sweep.append(result_row(scenario, family, role, f"ml >= {probability}",
-                                        analyze(flows, swept, lists, tree), prefix))
 
     os.makedirs(args.results, exist_ok=True)
     with open(os.path.join(args.results, "evaluation.csv"), "w", encoding="utf-8", newline="") as file:
@@ -125,8 +102,6 @@ def main():
         writer.writeheader()
         writer.writerows(rows)
     write_markdown(os.path.join(args.results, "evaluation.md"), rows)
-    if sweep:
-        write_markdown(os.path.join(args.results, "ml_threshold_sweep.md"), sweep)
     for r in rows:
         print(f"  {r['scenario']:>2} {r['config']:<12} bots {r['bots_flagged']}/{r['bots']} "
               f"normals {r['normals_flagged']}/{r['normals']} background {r['background_flagged']} "
