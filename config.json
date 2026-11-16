@@ -7,8 +7,7 @@
     "plot_top_n": "how many IPs to show in top_fanout.png",
     "signals": "each signal: threshold, points added when it fires, and its group",
     "group_caps": "maximum points a group can add, so one behaviour is not counted twice",
-    "severity": "score needed for each level; medium and high are reported",
-    "ml": "optional decision tree, used with --ml or enabled=true"
+    "severity": "score needed for each level; medium and high are reported"
   },
   "time_format": "%Y/%m/%d %H:%M:%S.%f",
   "window_seconds": 300,
@@ -24,7 +23,6 @@
     "beaconing":    {"max_cv": 0.1, "min_flows": 10, "points": 1, "group": "control"},
     "blocklist":    {"points": 3, "group": "control"}
   },
-  "group_caps": {"spread": 2, "volume": 2, "control": 3, "ml": 2},
-  "severity": {"low": 1, "medium": 3, "high": 5},
-  "ml": {"enabled": false, "model_file": "models/decision_tree.pkl", "min_probability": 0.5, "points": 2}
+  "group_caps": {"spread": 2, "volume": 2, "control": 3},
+  "severity": {"low": 1, "medium": 3, "high": 5}
 }

@@ -5,7 +5,7 @@ minutes inside a two-hour capture barely changes the totals. Counting per
 window keeps such bursts visible.
 
 Main data structure: a dictionary keyed by a tuple (source IP, window number):
-    windows[("147.32.84.165", 3)] = {"n_flows": 812, "dst_ips": {...}, ...}
+    windows[("147.32.84.165", 3)] = {"n_flows": 812, "dst_ports": {...}}
 Window number 3 means "from 15 to 20 minutes after the first flow of the
 file" when the window length is 300 seconds.
 """
@@ -39,21 +39,11 @@ def compute_windows(flows, window_seconds):
             continue
         key = (flow.src_ip, window_number(flow.start_time, start, window_seconds))
         if key not in windows:
-            windows[key] = {"n_flows": 0, "dst_ips": set(), "dst_ports": set(),
-                            "src_bytes": 0, "tcp_attempts": 0, "tcp_failed": 0,
-                            "is_bot": False}
+            windows[key] = {"n_flows": 0, "dst_ports": set()}
         w = windows[key]
         w["n_flows"] += 1
-        w["dst_ips"].add(flow.dst_ip)
         if flow.dst_port is not None:
             w["dst_ports"].add(flow.dst_port)
-        w["src_bytes"] += flow.src_bytes or 0
-        if flow.is_tcp_attempt():
-            w["tcp_attempts"] += 1
-            if flow.is_failed_tcp():
-                w["tcp_failed"] += 1
-        if flow.is_from_botnet():
-            w["is_bot"] = True
     return windows
 
 
@@ -87,23 +77,3 @@ def burst_threshold(windows, percentile, minimum):
     counts = np.array([w["n_flows"] for w in windows.values()], dtype=float)
     return max(minimum, int(math.ceil(np.percentile(counts, percentile))))
 
-
-def window_features(w):
-    """The numbers the decision tree sees for one (IP, window).
-
-    Byte counts are turned into log10 so that 1 KB, 1 MB and 1 GB become
-    3, 6 and 9: the tree then compares orders of magnitude, not raw bytes.
-    """
-    failed_ratio = w["tcp_failed"] / w["tcp_attempts"] if w["tcp_attempts"] > 0 else 0.0
-    return [
-        w["n_flows"],
-        len(w["dst_ips"]),
-        len(w["dst_ports"]),
-        math.log10(w["src_bytes"] + 1),
-        math.log10(w["src_bytes"] / w["n_flows"] + 1),
-        failed_ratio,
-    ]
-
-
-FEATURE_NAMES = ["n_flows", "n_dst_ips", "n_dst_ports", "log10_src_bytes",
-                 "log10_bytes_per_flow", "failed_tcp_ratio"]

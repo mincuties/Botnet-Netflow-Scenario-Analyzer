@@ -2,16 +2,14 @@
 
 Usage:
     python main.py --input data/sample.csv --config config.json
-    python main.py --input data/sample.csv --config config.json --ml
 
 Steps: read config -> load flows -> statistics per source IP and per
-5-minute window -> signals, blocklist and (with --ml) decision tree ->
-score and severity -> compare with labels -> write the outputs.
+5-minute window -> signals and blocklist -> score and severity ->
+compare with labels -> write the outputs.
 """
 
 import argparse
 import os
-import pickle
 import sys
 
 from analyzer.blocklist import load_blocklist
@@ -24,7 +22,7 @@ from analyzer.report import build_summary, write_recommended_blocks, write_repor
 
 
 class SetupError(Exception):
-    """A file named in config.json (blocklist, model) cannot be used."""
+    """The blocklist file named in config.json cannot be used."""
 
 
 def parse_arguments(argv):
@@ -32,36 +30,19 @@ def parse_arguments(argv):
     parser.add_argument("--input", required=True, help="netflow CSV file, plain or .gz (e.g. data/sample.csv)")
     parser.add_argument("--config", default="config.json", help="settings file (default: config.json)")
     parser.add_argument("--output", default="outputs", help="folder for results (default: outputs)")
-    parser.add_argument("--ml", action="store_true",
-                        help="also use the trained decision tree (needs scikit-learn)")
     return parser.parse_args(argv)
 
 
-def load_extras(config, use_ml):
-    """Load the blocklist and, if asked, the decision tree."""
+def run(input_path, config_path, output_dir):
+    """Do the whole analysis. Returns the summary lines (handy for tests)."""
+    config = load_config(config_path)
     try:
         blocked = load_blocklist(config["blocklist_file"])
     except OSError as error:
         raise SetupError(f"cannot read blocklist_file: {error}")
-    tree = None
-    if use_ml or config["ml"]["enabled"]:
-        try:
-            from analyzer.ml_model import load_model
-            tree = load_model(config["ml"]["model_file"])
-        except ImportError:
-            raise SetupError("--ml needs scikit-learn: pip install scikit-learn")
-        except (OSError, pickle.UnpicklingError, EOFError) as error:
-            raise SetupError(f"cannot load ml.model_file (run train_model.py first): {error}")
-    return blocked, tree
-
-
-def run(input_path, config_path, output_dir, use_ml=False):
-    """Do the whole analysis. Returns the summary lines (handy for tests)."""
-    config = load_config(config_path)
-    blocked, tree = load_extras(config, use_ml)
     load_result = load_flows(input_path, config["time_format"])
 
-    analysis = analyze(load_result.flows, config, blocked, tree)
+    analysis = analyze(load_result.flows, config, blocked)
     flagged = analysis.flagged()
 
     has_labels = "Label" not in load_result.missing_optional
@@ -87,7 +68,7 @@ def main(argv=None):
     """Return 0 on success, 1 on an input or configuration problem."""
     args = parse_arguments(argv)
     try:
-        lines = run(args.input, args.config, args.output, args.ml)
+        lines = run(args.input, args.config, args.output)
     except (ConfigError, LoaderError, SetupError) as error:
         # A clear one-line message instead of a long Python traceback.
         print(f"Error: {error}", file=sys.stderr)

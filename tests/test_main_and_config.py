@@ -51,7 +51,6 @@ def test_real_config_json_is_valid():
     (changed(("signals", "burst", "percentile"), 101), "at most 100"),
     (changed(("signals", "beaconing", "min_flows"), 2), "at least 3"),
     (changed(("severity", "medium"), 9), "low <= medium <= high"),
-    (changed(("ml", "enabled"), 1), "true/false"),
     (changed(("group_caps", "spread"), None), "group_caps"),
     ([1, 2, 3], "JSON object"),
 ])
@@ -97,32 +96,6 @@ def test_missing_blocklist_file_is_a_clear_error(tmp_path, capsys):
                  "--output", str(tmp_path / "out")])
     assert code == 1
     assert "blocklist_file" in capsys.readouterr().err
-
-
-def test_ml_without_model_file_is_a_clear_error(tmp_path, capsys):
-    data = changed(("ml", "model_file"), "no_model.pkl")
-    data["blocklist_file"] = ""
-    config = write_config(tmp_path, data)
-    code = main(["--input", os.path.join(BAD, "single_flow.csv"), "--config", config,
-                 "--output", str(tmp_path / "out"), "--ml"])
-    assert code == 1
-    assert "train_model.py" in capsys.readouterr().err
-
-
-def test_ml_without_scikit_learn_is_a_clear_error(tmp_path, capsys, monkeypatch):
-    import builtins
-    real_import = builtins.__import__
-
-    def no_sklearn(name, *args, **kwargs):
-        if name.startswith("sklearn") or name == "analyzer.ml_model":
-            raise ImportError(name)
-        return real_import(name, *args, **kwargs)
-
-    monkeypatch.setattr(builtins, "__import__", no_sklearn)
-    code = main(["--input", os.path.join(BAD, "single_flow.csv"), "--config", TINY_CONFIG,
-                 "--output", str(tmp_path), "--ml"])
-    assert code == 1
-    assert "scikit-learn" in capsys.readouterr().err
 
 
 def test_file_without_state_and_time_columns(tmp_path):

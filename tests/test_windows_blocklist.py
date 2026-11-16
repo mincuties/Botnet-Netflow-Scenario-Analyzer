@@ -2,12 +2,9 @@
 
 from datetime import datetime, timedelta
 
-import pytest
-
 from analyzer.blocklist import count_blocklist_hits, load_blocklist
 from analyzer.flow import Flow
-from analyzer.windows import (burst_threshold, compute_windows, window_features, window_maxima,
-                              window_number)
+from analyzer.windows import burst_threshold, compute_windows, window_maxima, window_number
 
 T0 = datetime(2011, 8, 16, 10, 0, 0)
 
@@ -44,13 +41,6 @@ def test_burst_threshold_percentile_and_minimum():
     # A percentile between two counts is rounded UP: median of [1, 2] is 1.5 -> 2.
     two = {("a", 0): {"n_flows": 1}, ("b", 0): {"n_flows": 2}}
     assert burst_threshold(two, 50, 1) == 2
-
-
-def test_window_features_for_the_tree():
-    w = {"n_flows": 4, "dst_ips": {"X", "Y"}, "dst_ports": {80}, "src_bytes": 999,
-         "tcp_attempts": 4, "tcp_failed": 1}
-    # log10(999 + 1) = 3; bytes per flow 999 / 4 = 249.75 -> log10(250.75) = 2.399
-    assert window_features(w) == pytest.approx([4, 2, 1, 3.0, 2.39924, 0.25], abs=1e-4)
 
 
 def test_load_blocklist_with_comments(tmp_path):

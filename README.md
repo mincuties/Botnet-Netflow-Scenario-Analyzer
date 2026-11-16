@@ -6,7 +6,6 @@ reports the suspicious hosts with the evidence behind every flag. When the captu
 CTU-13 labels, the program also measures its own result against the ground truth.
 
 The program is written in Python with the standard library, NumPy and Matplotlib.
-An optional decision-tree layer uses scikit-learn.
 
 ## Contents
 
@@ -32,10 +31,9 @@ python -m venv .venv
 # macOS / Linux: source .venv/bin/activate
 pip install -r requirements.txt
 
-python main.py --input data/sample.csv                 # rule-based analysis
-python main.py --input data/sample.csv --ml            # plus the decision tree
+python main.py --input data/sample.csv
 python main.py --input data/scenarios/scenario11.binetflow.gz
-python -m pytest                                       # 112 tests
+python -m pytest                                       # 104 tests
 ```
 
 | Argument | Required | Default | Meaning |
@@ -43,11 +41,10 @@ python -m pytest                                       # 112 tests
 | `--input` | yes | | netflow CSV file, plain or gzip-compressed (`.gz`) |
 | `--config` | no | `config.json` | settings file |
 | `--output` | no | `outputs` | folder for the results (created if missing) |
-| `--ml` | no | off | also use the trained decision tree |
 
 Exit code `0` means the analysis finished. Exit code `1` means the input, the
-configuration, the blocklist or the model could not be used; a one-line message starting
-with `Error:` explains why, and no Python traceback is shown.
+configuration or the blocklist could not be used; a one-line message starting with `Error:`
+explains why, and no Python traceback is shown.
 
 ## 2. How the program works
 
@@ -55,8 +52,7 @@ with `Error:` explains why, and no Python traceback is shown.
 input CSV ─► loader ─► Flow objects ─┬─► per-host statistics (whole file) ─┐
                                      ├─► per-host 5-minute windows ────────┤
                                      ├─► timing regularity per host pair ──┼─► signals ─► score ─► severity ─► outputs
-                                     ├─► blocklist hits ───────────────────┤
-                                     └─► decision tree (optional) ─────────┘
+                                     └─► blocklist hits ───────────────────┘
 ```
 
 ### 2.1 Loading
@@ -71,7 +67,7 @@ decompressed while reading.
 | Level | Key | Numbers | Module |
 |---|---|---|---|
 | host | source IP | flows, distinct destination IPs and ports (sets), bytes sent, TCP attempts and failures, first and last time seen | `features.py` |
-| window | (source IP, window number) | the same counts inside each 5-minute window | `windows.py` |
+| window | (source IP, window number) | flows and distinct destination ports inside each 5-minute window | `windows.py` |
 | host pair | (source IP, destination IP) | regularity of the gaps between flows | `features.py` |
 
 Windows matter because whole-file totals hide short events: a two-minute attack inside a
@@ -91,7 +87,6 @@ Each signal is one comparison with a threshold from `config.json`.
 | `burst` | flows in one window ≥ the 99.9th percentile of all windows (at least 100) | DDoS attack | volume | 2 |
 | `beaconing` | gaps to one destination have a coefficient of variation ≤ 0.1, over ≥ 10 flows | automatic contact with a command server | control | 1 |
 | `blocklist` | any flow to a known command-and-control (C&C) server | contact with a known botnet | control | 3 |
-| `ml` (with `--ml`) | decision-tree bot probability ≥ 0.5 | learned combination of the numbers above | ml | 2 |
 
 Definitions:
 
@@ -106,7 +101,7 @@ Definitions:
 ### 2.4 Score and severity
 
 Signals that describe the same behaviour belong to one group, and each group adds at most a
-fixed number of points (`group_caps`: spread 2, volume 2, control 3, ml 2). A scanner fires
+fixed number of points (`group_caps`: spread 2, volume 2, control 3). A scanner fires
 both `fanout` and `port_scan`; the cap counts that behaviour once.
 
 | Score | Severity | Reported |
@@ -126,26 +121,7 @@ resolver, is not enough. This keeps the number of alarms an operator must review
 the flows labelled as command-and-control (`-CC<number>` in the label) in scenario 10. The list
 plays the role of a threat-intelligence feed: it is built from one capture and used on others.
 
-### 2.6 Decision tree (optional)
-
-`train_model.py` trains a scikit-learn `DecisionTreeClassifier` on every (host, 5-minute
-window) of scenarios 5 and 10: 293,988 windows, 203 of them with botnet traffic. Each window
-is described by six numbers: flows, distinct destination IPs, distinct destination ports,
-`log10` of bytes sent, `log10` of bytes per flow, and the failed-TCP share. IP addresses are
-never used, so the tree cannot memorise the bot addresses that repeat across CTU-13
-scenarios. A host's probability is that of its most suspicious window.
-
-| Setting | Value | Reason |
-|---|---|---|
-| `max_depth` | 4 | the tree can be read rule by rule ([text](docs/results/decision_tree.txt), [picture](docs/results/decision_tree.png)) |
-| `class_weight` | `balanced` | bot windows are 0.07 % of the data |
-| `min_samples_leaf` | 20 | no rule rests on a handful of windows |
-| `random_state` | 0 | training twice gives the same tree (tested) |
-
-The trained model is committed as `models/decision_tree.pkl`. scikit-learn is imported only
-when `--ml` is used, so the rest of the program runs without it.
-
-### 2.7 Response
+### 2.6 Response
 
 `recommended_blocks.csv` lists the high-severity hosts with the action "review, then block at
 the network edge". The program never blocks anything: a flag is evidence for a person to check,
@@ -162,7 +138,7 @@ common alternative names are accepted (for example `src_ip` for `SrcAddr`).
 | `SrcAddr`, `DstAddr` | yes | grouping, distinct destinations, blocklist |
 | `StartTime` | no | windows, burst, port scan, beaconing; format in `config.json` |
 | `Dport` | no | distinct ports; decimal and hexadecimal (`0x0008`) accepted |
-| `SrcBytes` | no | large upload, decision tree |
+| `SrcBytes` | no | large upload |
 | `TotBytes` | no | report |
 | `Proto`, `State` | no | failed TCP attempts |
 | `Label` | no | comparison with ground truth |
@@ -219,9 +195,8 @@ Every value that changes the result is in `config.json`; the `_notes` key descri
 | `blocklist_file` | `data/blocklist.txt` (empty text = no blocklist) |
 | `plot_top_n` | 15 |
 | `signals` | threshold, points and group of each signal (section 2.3) |
-| `group_caps` | spread 2, volume 2, control 3, ml 2 |
+| `group_caps` | spread 2, volume 2, control 3 |
 | `severity` | low 1, medium 3, high 5 |
-| `ml` | `enabled` false, `model_file` `models/decision_tree.pkl`, `min_probability` 0.5, `points` 2 |
 
 File names are relative to the folder of `config.json`. A missing key, a value of the wrong
 type, a value out of range (for example a share above 1 or a percentile above 100), severity
@@ -276,14 +251,13 @@ All files under `tests/` are small synthetic files written for testing.
 
 ### 7.1 Method
 
-`python evaluate.py` runs three configurations on every scenario and writes
+`python evaluate.py` runs two configurations on every scenario and writes
 [docs/results/evaluation.md](docs/results/evaluation.md) and `.csv`:
 
 | Configuration | Meaning |
 |---|---|
 | baseline | two simple rules, fan-out or large upload, either one alone flags the host |
 | rules | the default configuration (all signals, group caps, severity, blocklist) |
-| rules_ml | rules plus the decision tree (`--ml`) |
 
 Ground truth for a monitored host: **bot** if it sent a `From-Botnet` flow; **normal** if it sent
 a `From-Normal` flow and no botnet flow; **background** otherwise. A flag on a normal host is a
@@ -295,7 +269,6 @@ Measures against over-fitting:
 
 - thresholds chosen on scenario 5 only ("dev"); scenarios 10, 11, 12 and 7 are "test";
 - the blocklist comes from scenario 10, so it is switched off when scenario 10 is scored;
-- the tree is trained on scenarios 5 and 10 and scored only on 11, 12 and 7;
 - no setting was changed after looking at test results.
 
 ### 7.2 Results
@@ -308,13 +281,10 @@ Measures against over-fitting:
 | 10 | rules | 10 / 10 | 1 / 7 | 29 | 0.25 |
 | 11 | baseline | 2 / 3 | 0 / 6 | 30 | 0.06 |
 | 11 | rules | 3 / 3 | 0 / 6 | 13 | 0.19 |
-| 11 | rules_ml | 3 / 3 | 1 / 6 | 39 | 0.07 |
 | 12 | baseline | 3 / 3 | 3 / 6 | 49 | 0.05 |
 | 12 | rules | 1 / 3 | 1 / 6 | 20 | 0.05 |
-| 12 | rules_ml | 3 / 3 | 3 / 6 | 70 | 0.04 |
 | 7 | baseline | 0 / 1 | 0 / 5 | 35 | 0.00 |
 | 7 | rules | 0 / 1 | 0 / 5 | 10 | 0.00 |
-| 7 | rules_ml | 0 / 1 | 1 / 5 | 43 | 0.00 |
 
 Totals over the four test scenarios:
 
@@ -322,14 +292,6 @@ Totals over the four test scenarios:
 |---|---|---|---|
 | baseline | 15 / 17 (88 %) | 7 / 24 | 211 |
 | rules | 14 / 17 (82 %) | 2 / 24 | 72 |
-
-Totals over scenarios 11, 12 and 7, where the tree may be scored:
-
-| Configuration | Bots flagged | Normal hosts flagged | Background flagged |
-|---|---|---|---|
-| baseline | 5 / 7 | 3 / 17 | 114 |
-| rules | 4 / 7 | 1 / 17 | 43 |
-| rules_ml | 6 / 7 | 5 / 17 | 152 |
 
 ### 7.3 Interpretation
 
@@ -346,20 +308,12 @@ Totals over scenarios 11, 12 and 7, where the tree may be scored:
 - **Blocklist.** Useful against a family seen before (Rbot in scenarios 10 and 11); no effect on
   other families (12, 7). On the sample of scenario 7 it reports one background host that
   contacted a listed address once.
-- **Decision tree.** It finds the two scenario 12 bots that the rules leave at low severity
-  (4 → 6 of 7), but raises false alarms on normal hosts from 1 to 5 and unverified flags from 43
-  to 152. With two training scenarios and 203 bot windows it is not better overall than the rules,
-  so it stays optional. The sweep of `ml.min_probability` in
-  [docs/results/ml_threshold_sweep.md](docs/results/ml_threshold_sweep.md) shows that 0.9 would
-  remove most of the extra alarms (scenario 11: background 39 → 14, normal hosts 1 → 0) while
-  losing one scenario 12 bot. That value was observed on test scenarios, so it is reported and
-  not applied.
 
 ### 7.4 Missed bot and recurring false alarm
 
 - The Sogou bot of scenario 7 (`147.32.84.165`) sent 63 flows to 17 destinations and 447,399
-  bytes in about ten minutes; about a third of its flows are DNS lookups. No signal and no
-  configuration, including the tree, flags it. A labelled-normal host of the same capture
+  bytes in about ten minutes; about a third of its flows are DNS lookups. No signal flags it,
+  in the baseline or in the default rules. A labelled-normal host of the same capture
   contacted more destinations (35). Detecting such a quiet bot would need information that
   netflow does not carry, such as the domain names it resolves.
 - The normal host `147.32.84.170` is flagged in scenarios 5, 10 and 12 for wide fan-out with
@@ -368,28 +322,26 @@ Totals over scenarios 11, 12 and 7, where the tree may be scored:
 ### 7.5 Why the project uses more than simple threshold rules
 
 The course guideline asks for simple algorithms. The measurements above are the reason the
-project goes further in four places, each kept as small and explainable as possible:
+project goes further in three places, each kept as small and explainable as possible:
 
 | Technique | Why it is needed | Evidence |
 |---|---|---|
 | 5-minute windows and a percentile threshold | DDoS bots contact few hosts (10 to 12 in scenario 10) but send thousands of flows in minutes; whole-file totals hide this | `port_scan` and `burst` fire for all 10 bots of scenario 10 |
 | scoring with group caps and severity | a single rule flags many harmless busy hosts | normal hosts flagged 7 → 2, unverified flags 211 → 72 |
 | C&C blocklist | a bot that sends almost nothing is invisible to behaviour signals | finds `147.32.84.192` in scenario 11 (7 flows) |
-| decision tree (optional) | shows what a learned model adds and what it costs | 2 more bots, 4 more false alarms; off by default |
 
-Each technique is still built from course material: dictionaries keyed by tuples, sets,
-NumPy percentiles and standard deviations, and a depth-4 tree that can be printed as nested
-if-statements.
+Each technique is still built from course material: dictionaries keyed by tuples, sets, and
+NumPy percentiles and standard deviations.
 
 ### 7.6 Running time
 
 On scenario 10 (1,309,791 flows, 179 MB uncompressed) loading takes about 25 seconds and
-700 MB of memory; `evaluate.py` over all five scenarios takes about two minutes.
+700 MB of memory; `evaluate.py` over all five scenarios takes about one minute.
 
 ## 8. Testing
 
 ```bash
-python -m pytest        # 112 tests, about 10 seconds
+python -m pytest        # 104 tests, about 10 seconds
 ```
 
 | File | Covers |
@@ -397,9 +349,8 @@ python -m pytest        # 112 tests, about 10 seconds
 | `tests/test_flow.py` | counts, decimal and hexadecimal ports, times, label direction |
 | `tests/test_loader.py` | one test per edge-case file in `tests/bad_files/` (15 files), damaged `.gz` files |
 | `tests/test_features_detectors.py` | distinct counts, gaps, beaconing CV by hand, every signal at its boundary, group caps, severity levels, monitored prefix, label evaluation |
-| `tests/test_windows_blocklist.py` | window boundaries, burst percentile and minimum, tree features, blocklist file and hits |
-| `tests/test_ml_model.py` | training is reproducible, probabilities, the shipped model with `--ml` (skipped without scikit-learn) |
-| `tests/test_main_and_config.py` | ten invalid configurations, exit codes, missing blocklist or model, missing scikit-learn, missing `State`/`StartTime`/`Label` columns, the whole program on every edge-case file |
+| `tests/test_windows_blocklist.py` | window boundaries, burst percentile and minimum, blocklist file and hits |
+| `tests/test_main_and_config.py` | nine invalid configurations, exit codes, missing blocklist, missing `State`/`StartTime`/`Label` columns, the whole program on every edge-case file |
 | `tests/test_manual_expected.py` | the whole program against the hand-computed case below, and identical output on two runs |
 
 ### 8.1 Hand-computed test case
@@ -488,9 +439,8 @@ folder and accepts only exit code 0 or 1.
 ```
 main.py                 command-line entry point
 config.json             all settings
-evaluate.py             measures baseline, rules and rules_ml on every scenario
+evaluate.py             measures the baseline and the rules on every scenario
 build_blocklist.py      builds data/blocklist.txt from scenario 10
-train_model.py          trains models/decision_tree.pkl on scenarios 5 and 10
 tune_thresholds.py      scores thresholds of one signal against the labels (F1)
 make_sample.py          reproduces data/sample.csv
 requirements.txt
@@ -498,10 +448,9 @@ analyzer/
   flow.py               Flow dataclass and value parsers
   loader.py             CSV and gzip reading, column matching, row validation
   features.py           per-host statistics, timing regularity
-  windows.py            5-minute windows, burst threshold, tree features
+  windows.py            5-minute windows, burst threshold
   blocklist.py          C&C list reading and matching
   detectors.py          signals, score, severity, comparison with labels
-  ml_model.py           optional decision tree
   pipeline.py           runs the steps in order
   config.py             settings checks
   report.py             report.csv, recommended_blocks.csv, summary.txt
@@ -510,11 +459,9 @@ data/
   sample.csv            60,000 flows of scenario 7
   scenarios/            five CTU-13 scenarios (gzip)
   blocklist.txt         10 C&C addresses
-models/
-  decision_tree.pkl     trained tree
 docs/
   example_outputs/      outputs of the run on data/sample.csv
-  results/              evaluation tables, threshold sweep, tree as text and picture
+  results/              evaluation tables
 tests/
   bad_files/            15 edge-case files
   data/                 hand-computed test case
@@ -524,12 +471,12 @@ tests/
 
 | Criterion | Where it is addressed |
 |---|---|
-| Data and reproducibility | sources, links and SHA-256 checksums (section 6); `requirements.txt`; fixed random seed; scripts that rebuild the sample, the blocklist, the model and every result table; deterministic output order |
+| Data and reproducibility | sources, links and SHA-256 checksums (section 6); `requirements.txt`; scripts that rebuild the sample, the blocklist and every result table; deterministic output order |
 | Functional correctness | columns by name, required and optional columns, gzip input, row validation with counted reasons, clear errors (section 3) |
 | Course concepts | functions with one task each; `dict` keyed by IP and by `(IP, window)` tuples; `set` for distinct counts; `Counter`; CSV, JSON and gzip file I/O; NumPy (`diff`, `mean`, `std`, `percentile`); Matplotlib; `dataclass` (`Flow`, `Signal`, `Detection`, `Analysis`); custom exceptions |
-| Testing | 112 tests, 15 edge-case files, one hand-computed case, boundary tests for every signal (section 8) |
+| Testing | 104 tests, 15 edge-case files, one hand-computed case, boundary tests for every signal (section 8) |
 | Analysis | evidence for every flag; comparison with labels; dev/test split; baseline comparison; missed bot and false alarms reported (section 7) |
-| Code quality | small modules with docstrings, all thresholds in `config.json`, optional dependency isolated |
+| Code quality | small modules with docstrings, all thresholds in `config.json` |
 
 ## 11. Limitations
 
@@ -539,4 +486,3 @@ tests/
 - Most flags fall on background hosts that the dataset does not verify.
 - The program analyses one file at a time, offline, and keeps all flows in memory.
 - The blocklist knows only the servers seen in scenario 10; real lists change daily.
-- The decision tree is trained on two captures of two families and does not generalise well.

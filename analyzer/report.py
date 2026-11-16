@@ -94,10 +94,6 @@ def signal_settings_lines(config, analysis, load_result):
         f"  beaconing    (+{s['beaconing']['points']}, {s['beaconing']['group']}): gap CV <= {s['beaconing']['max_cv']} over >= {s['beaconing']['min_flows']} flows to one destination",
         f"  blocklist    (+{s['blocklist']['points']}, {s['blocklist']['group']}): any flow to {analysis.blocklist_size} blocklisted IPs",
     ]
-    if analysis.ml_used:
-        lines.append(f"  ml           (+{config['ml']['points']}, ml): decision tree probability >= {config['ml']['min_probability']}")
-    else:
-        lines.append("  ml: not used (run with --ml to enable)")
     if "SrcBytes" in missing:
         lines.append("  note: no SrcBytes column, large_upload cannot fire")
     if "State" in missing:
